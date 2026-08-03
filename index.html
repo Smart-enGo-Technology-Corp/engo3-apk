@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Engo3 App 版本下載</title>
+<style>
+  :root {
+    --bg: #f6f8fa; --card: #ffffff; --text: #1f2328; --muted: #656d76;
+    --accent: #1a7f37; --accent-text: #ffffff; --border: #d1d9e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --text: #e6edf3; --muted: #8b949e;
+      --accent: #238636; --accent-text: #ffffff; --border: #30363d;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; padding: 1.5rem 1rem 3rem; }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+  .sub { color: var(--muted); font-size: .875rem; margin-bottom: 1.5rem; }
+  .release { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .release-head { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+  .ver { font-size: 1.15rem; font-weight: 700; }
+  .latest-badge { background: var(--accent); color: var(--accent-text); font-size: .7rem; padding: .15rem .5rem; border-radius: 999px; font-weight: 600; }
+  .date { color: var(--muted); font-size: .8rem; }
+  .notes { color: var(--muted); font-size: .875rem; margin-top: .5rem; white-space: pre-wrap; }
+  .assets { margin-top: .75rem; display: flex; flex-direction: column; gap: .5rem; }
+  a.dl { display: flex; justify-content: space-between; align-items: center; gap: .75rem; text-decoration: none; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: .65rem 1rem; font-weight: 600; font-size: .95rem; }
+  a.dl .size { font-weight: 400; font-size: .8rem; opacity: .85; }
+  .status { color: var(--muted); text-align: center; padding: 2rem 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Engo3 App 版本下載</h1>
+  <p class="sub">Android 手機直接點「下載 APK」安裝；安裝時若跳出「不明來源」提示，允許即可。</p>
+  <div id="list"><p class="status">載入版本列表中…</p></div>
+</main>
+<script>
+const REPO = 'Cow-Lin/engo3-apk';
+const list = document.getElementById('list');
+fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`)
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(releases => {
+    const items = releases.filter(r => !r.draft && r.assets.some(a => a.name.endsWith('.apk')));
+    if (!items.length) { list.innerHTML = '<p class="status">目前還沒有可下載的版本。</p>'; return; }
+    list.innerHTML = items.map((r, i) => {
+      const date = new Date(r.published_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+      const assets = r.assets.filter(a => a.name.endsWith('.apk')).map(a =>
+        `<a class="dl" href="${a.browser_download_url}"><span>下載 APK（${a.name}）</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`
+      ).join('');
+      const notes = r.body ? `<p class="notes">${r.body.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>` : '';
+      return `<section class="release">
+        <div class="release-head">
+          <span class="ver">${r.name || r.tag_name}</span>
+          ${i === 0 ? '<span class="latest-badge">最新</span>' : ''}
+          <span class="date">${date}</span>
+        </div>
+        ${notes}
+        <div class="assets">${assets}</div>
+      </section>`;
+    }).join('');
+  })
+  .catch(e => { list.innerHTML = `<p class="status">版本列表載入失敗（${e.message}），請重新整理。</p>`; });
+</script>
+</body>
+</html>
