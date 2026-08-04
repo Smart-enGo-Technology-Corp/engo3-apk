@@ -52,7 +52,12 @@ fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`)
       const assets = r.assets.filter(a => a.name.endsWith('.apk')).map(a =>
         `<a class="dl" href="${a.browser_download_url}"><span>下載 APK（${a.name}）</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`
       ).join('');
-      const notes = r.body ? `<p class="notes">${r.body.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>` : '';
+      const notesText = (r.body || '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .split('\n')
+        .map(l => l.replace(/^#+\s*(.*)$/, '<strong>$1</strong>').replace(/^-{3,}$/, ''))
+        .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      const notes = notesText ? `<p class="notes">${notesText}</p>` : '';
       return `<section class="release">
         <div class="release-head">
           <span class="ver">${r.name || r.tag_name}</span>
