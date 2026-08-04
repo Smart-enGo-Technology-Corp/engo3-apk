@@ -49,9 +49,11 @@ fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`)
     if (!items.length) { list.innerHTML = '<p class="status">目前還沒有可下載的版本。</p>'; return; }
     list.innerHTML = items.map((r, i) => {
       const date = new Date(r.published_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
-      const assets = r.assets.filter(a => a.name.endsWith('.apk')).map(a =>
-        `<a class="dl" href="${a.browser_download_url}"><span>下載 APK（${a.name}）</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`
-      ).join('');
+      const assets = r.assets.filter(a => a.name.endsWith('.apk')).map(a => {
+        const device = a.name.includes('_phone') ? 'Android Phone' : 'Android Tablet';
+        const ver = a.name.replace(/\.apk$/, '').replace(/_(phone|tablet)$/, '');
+        return `<a class="dl" href="${a.browser_download_url}"><span>下載 APK - ${device} - ${ver}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
+      }).join('');
       const notesText = (r.body || '')
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
         .split('\n')
