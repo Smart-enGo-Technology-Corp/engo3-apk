@@ -42,8 +42,11 @@
 <script>
 const REPO = 'Smart-enGo-Technology-Corp/engo3-apk';
 const list = document.getElementById('list');
-fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`)
+// 優先讀同站靜態 releases.json（發版時由 release.sh 更新），避開 GitHub API 匿名額度；讀不到才退回 API
+fetch('./releases.json', { cache: 'no-cache' })
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .catch(() => fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }))
   .then(releases => {
     const items = releases.filter(r => !r.draft && r.assets.some(a => a.name.endsWith('.apk')));
     if (!items.length) { list.innerHTML = '<p class="status">目前還沒有可下載的版本。</p>'; return; }
