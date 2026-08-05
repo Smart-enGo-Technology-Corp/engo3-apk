@@ -40,7 +40,7 @@
   <div id="list"><p class="status">載入版本列表中…</p></div>
 </main>
 <script>
-const REPO = 'Cow-Lin/engo3-apk';
+const REPO = 'Smart-enGo-Technology-Corp/engo3-apk';
 const list = document.getElementById('list');
 fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`)
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
