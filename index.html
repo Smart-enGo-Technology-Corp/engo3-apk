@@ -30,6 +30,10 @@
   .assets { margin-top: .75rem; display: flex; flex-direction: column; gap: .5rem; }
   a.dl { display: flex; justify-content: space-between; align-items: center; gap: .75rem; text-decoration: none; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: .65rem 1rem; font-weight: 600; font-size: .95rem; }
   a.dl .size { font-weight: 400; font-size: .8rem; opacity: .85; }
+  /* 環境徽章：紅=正式（裝錯影響真實用戶），藍=測試；舊檔名無環境段不顯示 */
+  .env-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; margin-right: .5rem; vertical-align: 1px; }
+  .env-prd { background: #cf222e; color: #ffffff; }
+  .env-stg { background: #0969da; color: #ffffff; }
   .status { color: var(--muted); text-align: center; padding: 2rem 0; }
 </style>
 </head>
@@ -54,8 +58,11 @@ fetch('./releases.json', { cache: 'no-cache' })
       const date = new Date(r.published_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
       const assets = r.assets.filter(a => a.name.endsWith('.apk')).map(a => {
         const device = a.name.includes('_phone') ? 'Android Phone' : 'Android Tablet';
-        const ver = a.name.replace(/\.apk$/, '').replace(/_(phone|tablet)$/, '');
-        return `<a class="dl" href="${a.browser_download_url}"><span>下載 APK - ${device} - ${ver}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
+        // 2026-08-26 起檔名帶環境段 v{V}_{B}_{stg|prd}_{tablet|phone}.apk；環境改以徽章呈現，版本文字不重複
+        const envMatch = a.name.match(/_(stg|prd)_(?:phone|tablet)\.apk$/);
+        const envBadge = envMatch ? `<span class="env-badge env-${envMatch[1]}">${envMatch[1] === 'prd' ? '正式 PRD' : '測試 STG'}</span>` : '';
+        const ver = a.name.replace(/\.apk$/, '').replace(/_(phone|tablet)$/, '').replace(/_(stg|prd)$/, '');
+        return `<a class="dl" href="${a.browser_download_url}"><span>${envBadge}下載 APK - ${device} - ${ver}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
       }).join('');
       const notesText = (r.body || '')
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
