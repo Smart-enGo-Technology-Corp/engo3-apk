@@ -35,6 +35,13 @@
   .env-prd { background: #cf222e; color: #ffffff; }
   .env-stg { background: #0969da; color: #ffffff; }
   .os-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; margin-right: .35rem; vertical-align: 1px; background: #6e7781; color: #fff; }
+  /* 本頁網址 QR：給人轉傳這一頁用。與資產列的 QR 不同，手機上照樣顯示——
+     用途是拿自己的螢幕給旁邊的人掃，不是自己掃自己 */
+  .page-share { display: flex; align-items: center; gap: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .page-share .txt { min-width: 0; }
+  .page-share .txt strong { display: block; font-size: .95rem; margin-bottom: .2rem; }
+  .page-share .txt code { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+  .page-share canvas { flex: none; width: 92px; height: 92px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 5px; }
   .status { color: var(--muted); text-align: center; padding: 2rem 0; }
   /* QR：只給最新版顯示，供電腦開頁時用手機掃碼直接下載 */
   .asset-row { display: flex; align-items: stretch; gap: .5rem; }
@@ -52,6 +59,13 @@
   <p class="sub">Android 直接點「下載 APK」，安裝時若跳出「不明來源」提示，允許即可。<br>
   iOS 請用 Safari 點「安裝 iOS」，不需要 TestFlight——但<strong>僅限已登記的測試機</strong>，
   未登記的手機會安裝失敗，請把手機 UDID 給開發者登記，等下一版重新打包。</p>
+  <div class="page-share">
+    <canvas id="pageQr"></canvas>
+    <div class="txt">
+      <strong>掃描開啟本頁</strong>
+      <code>https://smart-engo-technology-corp.github.io/engo3-apk/</code>
+    </div>
+  </div>
   <div id="list"><p class="status">載入版本列表中…</p></div>
 </main>
 <script src="./vendor/qrcode.js"></script>
@@ -118,28 +132,33 @@ fetch('./releases.json', { cache: 'no-cache' })
 
 // 以 canvas 畫 QR。ECC 用 L：內容是固定網址、螢幕上不會髒污，
 // 換取較低版本、較大的格子，遠一點也掃得到
+const PAGE_URL = 'https://smart-engo-technology-corp.github.io/engo3-apk/';
+
+// 本頁網址的 QR 不依賴 releases.json，載入即可畫，不必等列表回來
+drawQr(document.getElementById('pageQr'), PAGE_URL);
+
+function drawQr(cv, text) {
+  if (!cv) return;
+  try {
+    const qr = qrcode(0, 'L');
+    qr.addData(text);
+    qr.make();
+    const n = qr.getModuleCount(), quiet = 2, scale = 3, px = (n + quiet * 2) * scale;
+    cv.width = px; cv.height = px;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, px, px);
+    ctx.fillStyle = '#000';
+    for (let r = 0; r < n; r++)
+      for (let c = 0; c < n; c++)
+        if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+  } catch (e) {
+    cv.remove();
+  }
+}
+
 function drawQrCodes() {
-  document.querySelectorAll('canvas.qr').forEach(cv => {
-    try {
-      const qr = qrcode(0, 'L');
-      qr.addData(cv.dataset.url);
-      qr.make();
-      const n = qr.getModuleCount();
-      const quiet = 2;                       // 靜區：規格建議 4，這裡靠 CSS padding 補足
-      const scale = 3;
-      const px = (n + quiet * 2) * scale;
-      cv.width = px; cv.height = px;
-      const ctx = cv.getContext('2d');
-      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, px, px);
-      ctx.fillStyle = '#000';
-      for (let r = 0; r < n; r++)
-        for (let c = 0; c < n; c++)
-          if (qr.isDark(r, c))
-            ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
-    } catch (e) {
-      cv.remove();                           // 畫不出來就撤掉，不留一塊空白框
-    }
-  });
+  // 靜區規格建議 4 格，這裡取 2 再靠 CSS padding 補足
+  document.querySelectorAll('canvas.qr').forEach(cv => drawQr(cv, cv.dataset.url));
 }
 </script>
 </body>
