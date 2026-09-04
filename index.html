@@ -34,6 +34,7 @@
   .env-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; margin-right: .5rem; vertical-align: 1px; }
   .env-prd { background: #cf222e; color: #ffffff; }
   .env-stg { background: #0969da; color: #ffffff; }
+  .os-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; margin-right: .35rem; vertical-align: 1px; background: #6e7781; color: #fff; }
   .status { color: var(--muted); text-align: center; padding: 2rem 0; }
   /* QR：只給最新版顯示，供電腦開頁時用手機掃碼直接下載 */
   .asset-row { display: flex; align-items: stretch; gap: .5rem; }
@@ -48,7 +49,9 @@
 <body>
 <main>
   <h1>Engo3 App 版本下載</h1>
-  <p class="sub">Android 手機直接點「下載 APK」安裝；安裝時若跳出「不明來源」提示，允許即可。</p>
+  <p class="sub">Android 直接點「下載 APK」，安裝時若跳出「不明來源」提示，允許即可。<br>
+  iOS 請用 Safari 點「安裝 iOS」，不需要 TestFlight——但<strong>僅限已登記的測試機</strong>，
+  未登記的手機會安裝失敗，請把手機 UDID 給開發者登記，等下一版重新打包。</p>
   <div id="list"><p class="status">載入版本列表中…</p></div>
 </main>
 <script src="./vendor/qrcode.js"></script>
@@ -61,20 +64,37 @@ fetch('./releases.json', { cache: 'no-cache' })
   .catch(() => fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`)
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }))
   .then(releases => {
-    const items = releases.filter(r => !r.draft && r.assets.some(a => a.name.endsWith('.apk')));
+    // 同一個版號底下並列兩個平台的安裝檔，不另開頁面
+    const isInstallable = a => a.name.endsWith('.apk') || a.name.endsWith('_ios_adhoc.ipa');
+    const items = releases.filter(r => !r.draft && r.assets.some(isInstallable));
     if (!items.length) { list.innerHTML = '<p class="status">目前還沒有可下載的版本。</p>'; return; }
     list.innerHTML = items.map((r, i) => {
       const date = new Date(r.published_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
-      const assets = r.assets.filter(a => a.name.endsWith('.apk')).map(a => {
-        const device = a.name.includes('_phone') ? 'Android Phone' : 'Android Tablet';
-        // 2026-08-26 起檔名帶環境段 v{V}_{B}_{stg|prd}_{tablet|phone}.apk；環境改以徽章呈現，版本文字不重複
-        const envMatch = a.name.match(/_(stg|prd)_(?:phone|tablet)\.apk$/);
+      const assets = r.assets.filter(isInstallable).map(a => {
+        const isIos = a.name.endsWith('_ios_adhoc.ipa');
+        // 環境徽章：檔名固定帶 _stg_ / _prd_ 段；紅=正式（裝錯影響真實用戶），藍=測試
+        const envMatch = a.name.match(/_(stg|prd)_/);
         const envBadge = envMatch ? `<span class="env-badge env-${envMatch[1]}">${envMatch[1] === 'prd' ? '正式 PRD' : '測試 STG'}</span>` : '';
-        const ver = a.name.replace(/\.apk$/, '').replace(/_(phone|tablet)$/, '').replace(/_(stg|prd)$/, '');
-        const btn = `<a class="dl" href="${a.browser_download_url}"><span>${envBadge}下載 APK - ${device} - ${ver}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
+        let href, label, qrUrl;
+        if (isIos) {
+          // OTA manifest 與 tag 一對一；tag 內的 + 在網址與檔名都不好處理，統一換底線
+          const manifest = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}ios/${r.tag_name.replace(/\+/g, '_')}.plist`;
+          href = `itms-services://?action=download-manifest&url=${encodeURIComponent(manifest)}`;
+          label = `${envBadge}<span class="os-badge">iOS</span>安裝 iOS - ${a.name.replace(/_ios_adhoc\.ipa$/, '')}`;
+          // iOS 的 QR 編本頁網址而非 itms-services：相機對自訂 scheme 多半直接無視，
+          // 掃到 https 才會開；掃碼進頁後再點安裝
+          qrUrl = location.href.split('#')[0];
+        } else {
+          const device = a.name.includes('_phone') ? 'Android Phone' : 'Android Tablet';
+          const ver = a.name.replace(/\.apk$/, '').replace(/_(phone|tablet)$/, '').replace(/_(stg|prd)$/, '');
+          href = a.browser_download_url;
+          label = `${envBadge}<span class="os-badge">Android</span>下載 APK - ${device} - ${ver}`;
+          qrUrl = a.browser_download_url;
+        }
+        const btn = `<a class="dl" href="${href}"><span>${label}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
         // 只有最新版掛 QR：舊版多是查閱用途，全掛會讓頁面塞滿上百個 QR
         if (i !== 0) return btn;
-        return `<div class="asset-row">${btn}<canvas class="qr" data-url="${a.browser_download_url}"></canvas></div>`;
+        return `<div class="asset-row">${btn}<canvas class="qr" data-url="${qrUrl}"></canvas></div>`;
       }).join('');
       const notesText = (r.body || '')
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
