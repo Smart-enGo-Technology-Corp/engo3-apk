@@ -27,14 +27,17 @@
   .latest-badge { background: var(--accent); color: var(--accent-text); font-size: .7rem; padding: .15rem .5rem; border-radius: 999px; font-weight: 600; }
   .date { color: var(--muted); font-size: .8rem; }
   .notes { color: var(--muted); font-size: .875rem; margin-top: .5rem; white-space: pre-wrap; }
-  .assets { margin-top: .75rem; display: flex; flex-direction: column; gap: .5rem; }
-  a.dl { display: flex; justify-content: space-between; align-items: center; gap: .75rem; text-decoration: none; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: .65rem 1rem; font-weight: 600; font-size: .95rem; }
-  a.dl .size { font-weight: 400; font-size: .8rem; opacity: .85; }
+  .assets { margin-top: .75rem; display: flex; flex-direction: column; gap: .6rem; }
+  a.dl { display: flex; justify-content: space-between; align-items: center; gap: .5rem; text-decoration: none; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: .6rem .85rem; font-weight: 600; font-size: .95rem; }
+  a.dl .size { font-weight: 400; font-size: .8rem; opacity: .85; white-space: nowrap; }
+  /* 左半保持單行：折行會讓相鄰的綠色區塊在手機上糊成一整片 */
+  a.dl .main { display: flex; align-items: center; gap: .3rem; min-width: 0; white-space: nowrap; }
+  a.dl .name { overflow: hidden; text-overflow: ellipsis; }
   /* 環境徽章：紅=正式（裝錯影響真實用戶），藍=測試；舊檔名無環境段不顯示 */
-  .env-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; margin-right: .5rem; vertical-align: 1px; }
+  .env-badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .4rem; border-radius: 999px; vertical-align: 1px; flex: none; }
   .env-prd { background: #cf222e; color: #ffffff; }
   .env-stg { background: #0969da; color: #ffffff; }
-  .os-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 999px; margin-right: .35rem; vertical-align: 1px; background: #6e7781; color: #fff; }
+  .os-badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .4rem; border-radius: 999px; vertical-align: 1px; background: #6e7781; color: #fff; flex: none; }
   /* 本頁網址 QR：給人轉傳這一頁用。與資產列的 QR 不同，手機上照樣顯示——
      用途是拿自己的螢幕給旁邊的人掃，不是自己掃自己 */
   .page-share { display: flex; align-items: center; gap: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
@@ -46,11 +49,16 @@
   /* QR：只給最新版顯示，供電腦開頁時用手機掃碼直接下載 */
   .asset-row { display: flex; align-items: stretch; gap: .5rem; }
   .asset-row a.dl { flex: 1; min-width: 0; }
-  .asset-row a.dl span:first-child { overflow-wrap: anywhere; }
+
   /* 底色固定白、留白邊——QR 靠明暗對比辨識，深色模式反白會掃不到 */
   .qr { flex: none; width: 76px; height: 76px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 5px; }
   /* 手機開這頁時自己掃自己沒有意義，直接不佔版面 */
-  @media (max-width: 520px) { .qr { display: none; } }
+  @media (max-width: 520px) {
+    .qr { display: none; }
+    /* 窄螢幕優先保住「手機／平板」這個關鍵字，debug 徽章價值最低先讓位——
+       否則徽章吃光寬度，名稱會被截成「手…」 */
+    .os-badge.dbg { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -94,18 +102,19 @@ fetch('./releases.json', { cache: 'no-cache' })
           // OTA manifest 與 tag 一對一；tag 內的 + 在網址與檔名都不好處理，統一換底線
           const manifest = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}ios/${r.tag_name.replace(/\+/g, '_')}.plist`;
           href = `itms-services://?action=download-manifest&url=${encodeURIComponent(manifest)}`;
-          label = `${envBadge}<span class="os-badge">iOS</span>安裝 iOS - ${a.name.replace(/_ios_adhoc\.ipa$/, '')}`;
-          // iOS 的 QR 編本頁網址而非 itms-services：相機對自訂 scheme 多半直接無視，
-          // 掃到 https 才會開；掃碼進頁後再點安裝
-          qrUrl = location.href.split('#')[0];
+          label = `${envBadge}<span class="os-badge">iOS</span><span class="name">iPhone 安裝</span>`;
+          // QR 與點擊行為一致，都指向 itms-services 安裝連結
+          qrUrl = href;
         } else {
-          const device = a.name.includes('_phone') ? 'Android Phone' : 'Android Tablet';
-          const ver = a.name.replace(/\.apk$/, '').replace(/_(phone|tablet)$/, '').replace(/_(stg|prd)$/, '');
+          // 版號在卡片標題已標明，按鈕只留「哪台裝置」；重複版號會讓文字折成三行，
+          // 相鄰按鈕在手機上就黏成一整片綠色
+          const device = a.name.includes('_phone') ? '手機下載' : '平板下載';
+          const dbg = a.name.includes('_debug') ? '<span class="os-badge dbg">debug</span>' : '';
           href = a.browser_download_url;
-          label = `${envBadge}<span class="os-badge">Android</span>下載 APK - ${device} - ${ver}`;
+          label = `${envBadge}<span class="os-badge">Android</span>${dbg}<span class="name">${device}</span>`;
           qrUrl = a.browser_download_url;
         }
-        const btn = `<a class="dl" href="${href}"><span>${label}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
+        const btn = `<a class="dl" href="${href}"><span class="main">${label}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
         // 只有最新版掛 QR：舊版多是查閱用途，全掛會讓頁面塞滿上百個 QR
         if (i !== 0) return btn;
         return `<div class="asset-row">${btn}<canvas class="qr" data-url="${qrUrl}"></canvas></div>`;
