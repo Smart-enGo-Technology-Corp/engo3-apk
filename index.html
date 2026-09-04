@@ -35,6 +35,14 @@
   .env-prd { background: #cf222e; color: #ffffff; }
   .env-stg { background: #0969da; color: #ffffff; }
   .status { color: var(--muted); text-align: center; padding: 2rem 0; }
+  /* QR：只給最新版顯示，供電腦開頁時用手機掃碼直接下載 */
+  .asset-row { display: flex; align-items: stretch; gap: .5rem; }
+  .asset-row a.dl { flex: 1; min-width: 0; }
+  .asset-row a.dl span:first-child { overflow-wrap: anywhere; }
+  /* 底色固定白、留白邊——QR 靠明暗對比辨識，深色模式反白會掃不到 */
+  .qr { flex: none; width: 76px; height: 76px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 5px; }
+  /* 手機開這頁時自己掃自己沒有意義，直接不佔版面 */
+  @media (max-width: 520px) { .qr { display: none; } }
 </style>
 </head>
 <body>
@@ -43,6 +51,7 @@
   <p class="sub">Android 手機直接點「下載 APK」安裝；安裝時若跳出「不明來源」提示，允許即可。</p>
   <div id="list"><p class="status">載入版本列表中…</p></div>
 </main>
+<script src="./vendor/qrcode.js"></script>
 <script>
 const REPO = 'Smart-enGo-Technology-Corp/engo3-apk';
 const list = document.getElementById('list');
@@ -62,7 +71,10 @@ fetch('./releases.json', { cache: 'no-cache' })
         const envMatch = a.name.match(/_(stg|prd)_(?:phone|tablet)\.apk$/);
         const envBadge = envMatch ? `<span class="env-badge env-${envMatch[1]}">${envMatch[1] === 'prd' ? '正式 PRD' : '測試 STG'}</span>` : '';
         const ver = a.name.replace(/\.apk$/, '').replace(/_(phone|tablet)$/, '').replace(/_(stg|prd)$/, '');
-        return `<a class="dl" href="${a.browser_download_url}"><span>${envBadge}下載 APK - ${device} - ${ver}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
+        const btn = `<a class="dl" href="${a.browser_download_url}"><span>${envBadge}下載 APK - ${device} - ${ver}</span><span class="size">${(a.size / 1048576).toFixed(1)} MB</span></a>`;
+        // 只有最新版掛 QR：舊版多是查閱用途，全掛會讓頁面塞滿上百個 QR
+        if (i !== 0) return btn;
+        return `<div class="asset-row">${btn}<canvas class="qr" data-url="${a.browser_download_url}"></canvas></div>`;
       }).join('');
       const notesText = (r.body || '')
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -80,8 +92,35 @@ fetch('./releases.json', { cache: 'no-cache' })
         <div class="assets">${assets}</div>
       </section>`;
     }).join('');
+    drawQrCodes();
   })
   .catch(e => { list.innerHTML = `<p class="status">版本列表載入失敗（${e.message}），請重新整理。</p>`; });
+
+// 以 canvas 畫 QR。ECC 用 L：內容是固定網址、螢幕上不會髒污，
+// 換取較低版本、較大的格子，遠一點也掃得到
+function drawQrCodes() {
+  document.querySelectorAll('canvas.qr').forEach(cv => {
+    try {
+      const qr = qrcode(0, 'L');
+      qr.addData(cv.dataset.url);
+      qr.make();
+      const n = qr.getModuleCount();
+      const quiet = 2;                       // 靜區：規格建議 4，這裡靠 CSS padding 補足
+      const scale = 3;
+      const px = (n + quiet * 2) * scale;
+      cv.width = px; cv.height = px;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, px, px);
+      ctx.fillStyle = '#000';
+      for (let r = 0; r < n; r++)
+        for (let c = 0; c < n; c++)
+          if (qr.isDark(r, c))
+            ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+    } catch (e) {
+      cv.remove();                           // 畫不出來就撤掉，不留一塊空白框
+    }
+  });
+}
 </script>
 </body>
 </html>
