@@ -26,6 +26,8 @@
   .ver { font-size: 1.15rem; font-weight: 700; }
   .latest-badge { background: var(--accent); color: var(--accent-text); font-size: .7rem; padding: .15rem .5rem; border-radius: 999px; font-weight: 600; }
   .date { color: var(--muted); font-size: .8rem; }
+  .rev { color: var(--muted); font-size: .8rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .rev a { color: inherit; }
   .notes { color: var(--muted); font-size: .875rem; margin-top: .5rem; white-space: pre-wrap; }
   /* 按鈕等高等色，間距太小會整排糊成一塊綠 —— 手機上再放寬 */
   .assets { margin-top: .85rem; display: flex; flex-direction: column; gap: .85rem; }
@@ -132,6 +134,7 @@ fetch('./releases.json', { cache: 'no-cache' })
           <span class="ver">${r.name || r.tag_name}</span>
           ${i === 0 ? '<span class="latest-badge">最新</span>' : ''}
           <span class="date">${date}</span>
+          ${r.revision ? `<span class="rev">commit <a href="https://github.com/Smart-enGo-Technology-Corp/engo_terminal_app3/commit/${r.revision}" target="_blank" rel="noopener">${r.revision}</a></span>` : ''}
         </div>
         ${notes}
         <div class="assets">${assets}</div>
