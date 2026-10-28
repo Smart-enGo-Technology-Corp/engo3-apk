@@ -36,7 +36,7 @@
   /* 左半保持單行：折行會讓相鄰的綠色區塊在手機上糊成一整片 */
   a.dl .main { display: flex; align-items: center; gap: .3rem; min-width: 0; white-space: nowrap; }
   a.dl .name { overflow: hidden; text-overflow: ellipsis; }
-  /* 環境徽章：紅=正式（裝錯影響真實用戶），藍=測試；舊檔名無環境段不顯示 */
+  /* 環境徽章：紅=正式（裝錯影響真實用戶），藍=測試（DEV）；舊檔名無環境段不顯示 */
   .env-badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .4rem; border-radius: 999px; vertical-align: 1px; flex: none; }
   .env-prd { background: #cf222e; color: #ffffff; }
   .env-stg { background: #0969da; color: #ffffff; }
@@ -98,9 +98,9 @@ fetch('./releases.json', { cache: 'no-cache' })
       const date = new Date(r.published_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
       const assets = r.assets.filter(isInstallable).map(a => {
         const isIos = a.name.endsWith('_ios_adhoc.ipa');
-        // 環境徽章：檔名固定帶 _stg_ / _prd_ 段；紅=正式（裝錯影響真實用戶），藍=測試
+        // 環境徽章：檔名固定帶 _stg_ / _prd_ 段；紅=正式（裝錯影響真實用戶），藍=測試（DEV）
         const envMatch = a.name.match(/_(stg|prd)_/);
-        const envBadge = envMatch ? `<span class="env-badge env-${envMatch[1]}">${envMatch[1] === 'prd' ? '正式 PRD' : '測試 STG'}</span>` : '';
+        const envBadge = envMatch ? `<span class="env-badge env-${envMatch[1]}">${envMatch[1] === 'prd' ? '正式 PRD' : '測試 DEV'}</span>` : '';
         let href, label, qrUrl;
         if (isIos) {
           // OTA manifest 與 tag 一對一；tag 內的 + 在網址與檔名都不好處理，統一換底線
