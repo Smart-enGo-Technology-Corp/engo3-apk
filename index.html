@@ -39,7 +39,7 @@
   /* 環境徽章：紅=正式（裝錯影響真實用戶），藍=測試（DEV）；舊檔名無環境段不顯示 */
   .env-badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .4rem; border-radius: 999px; vertical-align: 1px; flex: none; }
   .env-prd { background: #cf222e; color: #ffffff; }
-  .env-stg { background: #0969da; color: #ffffff; }
+  .env-stg, .env-dev { background: #0969da; color: #ffffff; }
   .os-badge { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .4rem; border-radius: 999px; vertical-align: 1px; background: #6e7781; color: #fff; flex: none; }
   /* 本頁網址 QR：給人轉傳這一頁用。與資產列的 QR 不同，手機上照樣顯示——
      用途是拿自己的螢幕給旁邊的人掃，不是自己掃自己 */
@@ -98,8 +98,8 @@ fetch('./releases.json', { cache: 'no-cache' })
       const date = new Date(r.published_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
       const assets = r.assets.filter(isInstallable).map(a => {
         const isIos = a.name.endsWith('_ios_adhoc.ipa');
-        // 環境徽章：檔名固定帶 _stg_ / _prd_ 段；紅=正式（裝錯影響真實用戶），藍=測試（DEV）
-        const envMatch = a.name.match(/_(stg|prd)_/);
+        // 環境徽章：檔名固定帶 _dev_ / _prd_ 段（2026-10-28 前的舊檔是 _stg_）；紅=正式（裝錯影響真實用戶），藍=測試（DEV）
+        const envMatch = a.name.match(/_(stg|dev|prd)_/);
         const envBadge = envMatch ? `<span class="env-badge env-${envMatch[1]}">${envMatch[1] === 'prd' ? '正式 PRD' : '測試 DEV'}</span>` : '';
         let href, label, qrUrl;
         if (isIos) {
